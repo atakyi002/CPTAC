@@ -1,0 +1,106 @@
+---
+title: "cptac_analysis"
+author: "Augustine Takyi"
+date: "2024-11-05"
+output: 
+  html_document:
+    df_print:paged
+
+---
+
+```{r setup, include=FALSE, echo = FALSE, message = FALSE, results = FALSE}
+library(here)
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_knit$set(root.dir = here::here())
+knitr::opts_chunk$set(tidy.opts = list(width.cutoff = 60), tidy = TRUE)
+```
+
+##Libraries 
+```{r}
+library(stringr)
+library(ggbiplot)
+library(ggVennDiagram)
+library(ComplexHeatmap)
+library(xlsx)
+library(readxl)
+library(MetaboAnalystR)
+library(tidyverse)
+```
+
+
+## Download the required files
+```{r}
+# Set the working directory
+file_dir <- "C:/Users/ataky/OneDrive - University of Utah/Desktop/Work"
+
+# Define URLs and file names
+file_urls <- list(
+  "COAD_RNAseq_gene_RSEM_coding_UQ_1500_log2_Tumor.txt" = "https://cptac-pancancer-data.s3.us-west-2.amazonaws.com/data_freeze_v1.2_reorganized/COAD/COAD_RNAseq_gene_RSEM_coding_UQ_1500_log2_Tumor.txt",
+  "COAD_proteomics_gene_abundance_log2_reference_intensity_normalized_Normal.txt" = "https://cptac-pancancer-data.s3.us-west-2.amazonaws.com/data_freeze_v1.2_reorganized/COAD/COAD_proteomics_gene_abundance_log2_reference_intensity_normalized_Normal.txt",
+  "COAD_proteomics_gene_abundance_log2_reference_intensity_normalized_Tumor.txt" = "https://cptac-pancancer-data.s3.us-west-2.amazonaws.com/data_freeze_v1.2_reorganized/COAD/COAD_proteomics_gene_abundance_log2_reference_intensity_normalized_Tumor.txt",
+  "COAD_meta.txt" = "https://cptac-pancancer-data.s3.us-west-2.amazonaws.com/data_freeze_v1.2_reorganized/COAD/COAD_meta.txt"
+)
+
+# Download each file individually
+for (file_name in names(file_urls)) {
+  file_url <- file_urls[[file_name]]
+  file_path <- file.path(file_dir, file_name)
+  
+  tryCatch({
+    download.file(file_url, file_path, mode = "wb")
+    message("Downloaded: ", file_name)
+  }, error = function(e) {
+    message("Failed to download: ", file_name, "\nError: ", e$message)
+  })
+}
+```
+## Read files into r
+```{r}
+# Define the working directory where the files are saved
+file_dir <- "C:/Users/ataky/OneDrive - University of Utah/Desktop/Work"
+
+# Define file paths
+files <- list(
+  rnaseq = file.path(file_dir, "COAD_RNAseq_gene_RSEM_coding_UQ_1500_log2_Tumor.txt"),
+  proteomics_normal = file.path(file_dir, "COAD_proteomics_gene_abundance_log2_reference_intensity_normalized_Normal.txt"),
+  proteomics_tumor = file.path(file_dir, "COAD_proteomics_gene_abundance_log2_reference_intensity_normalized_Tumor.txt"),
+  meta = file.path(file_dir, "COAD_meta.txt")
+)
+
+# Read each file into R
+tryCatch({
+  rnaseq <- read.table(files$rnaseq, header = TRUE, sep = "\t")
+  proteomics_normal <- read.table(files$proteomics_normal, header = TRUE, sep = "\t")
+  proteomics_tumor <- read.table(files$proteomics_tumor, header = TRUE, sep = "\t")
+  meta <- read.table(files$meta, header = TRUE, sep = "\t")
+
+  message("Files successfully read into R.")
+}, error = function(e) {
+  message("Error reading files: ", e$message)
+})
+```
+
+# Check the first few rows of the files downloaded 
+```{r}
+head(rnaseq)
+head(proteomics_normal)
+head(proteomics_tumor)
+head(meta)
+```
+
+## Data preparation for analysis
+```{r}
+## Filter RNA data in clinical
+rnaseq_id <- rnaseq[, colnames(rnaseq) %in% meta$case_id]
+
+## Filter Proteomics normal data in clinical data
+proteomics_normal_id <- proteomics_normal[, colnames(proteomics_normal) %in% meta$case_id]
+
+## Filter Proteomics normal data in clinical data
+proteomics_tumor_id <- proteomics_tumor[, colnames(proteomics_tumor) %in% meta$case_id]
+```
+
+## Match gene names between RNA-seq and protein data 
+```{r}
+## Identify 
+```
