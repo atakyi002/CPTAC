@@ -1,0 +1,246 @@
+---
+title: "cptac_analysis"
+author: "Augustine Takyi"
+date: "2024-11-05"
+output: 
+  html_document:
+    df_print:paged
+
+---
+
+```{r setup, include=FALSE, echo = FALSE, message = FALSE, results = FALSE}
+library(here)
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_knit$set(root.dir = here::here())
+knitr::opts_chunk$set(tidy.opts = list(width.cutoff = 60), tidy = TRUE)
+```
+
+##Libraries 
+```{r}
+library(stringr)
+library(ggbiplot)
+library(ggVennDiagram)
+library(ComplexHeatmap)
+library(xlsx)
+library(readxl)
+library(MetaboAnalystR)
+library(tidyverse)
+```
+
+
+## Download the required files
+```{r}
+# Set the working directory
+file_dir <- "C:/Users/ataky/OneDrive - University of Utah/Desktop/Work"
+
+# Define URLs and file names
+file_urls <- list(
+  "COAD_RNAseq_gene_RSEM_coding_UQ_1500_log2_Tumor.txt" = "https://cptac-pancancer-data.s3.us-west-2.amazonaws.com/data_freeze_v1.2_reorganized/COAD/COAD_RNAseq_gene_RSEM_coding_UQ_1500_log2_Tumor.txt",
+  "COAD_proteomics_gene_abundance_log2_reference_intensity_normalized_Normal.txt" = "https://cptac-pancancer-data.s3.us-west-2.amazonaws.com/data_freeze_v1.2_reorganized/COAD/COAD_proteomics_gene_abundance_log2_reference_intensity_normalized_Normal.txt",
+  "COAD_proteomics_gene_abundance_log2_reference_intensity_normalized_Tumor.txt" = "https://cptac-pancancer-data.s3.us-west-2.amazonaws.com/data_freeze_v1.2_reorganized/COAD/COAD_proteomics_gene_abundance_log2_reference_intensity_normalized_Tumor.txt",
+  "COAD_meta.txt" = "https://cptac-pancancer-data.s3.us-west-2.amazonaws.com/data_freeze_v1.2_reorganized/COAD/COAD_meta.txt",
+  "COAD_survival.txt" = "https://cptac-pancancer-data.s3.us-west-2.amazonaws.com/data_freeze_v1.2_reorganized/COAD/COAD_survival.txt"
+)
+
+# Download each file individually
+for (file_name in names(file_urls)) {
+  file_url <- file_urls[[file_name]]
+  file_path <- file.path(file_dir, file_name)
+  
+  tryCatch({
+    download.file(file_url, file_path, mode = "wb")
+    message("Downloaded: ", file_name)
+  }, error = function(e) {
+    message("Failed to download: ", file_name, "\nError: ", e$message)
+  })
+}
+```
+## Read files into r
+```{r}
+# Define the working directory where the files are saved
+file_dir <- "C:/Users/ataky/OneDrive - University of Utah/Desktop/Work"
+
+# Define file paths
+files <- list(
+  rnaseq_tumor = file.path(file_dir, "COAD_RNAseq_gene_RSEM_coding_UQ_1500_log2_Tumor.txt"),
+  proteomics_normal = file.path(file_dir, "COAD_proteomics_gene_abundance_log2_reference_intensity_normalized_Normal.txt"),
+  proteomics_tumor = file.path(file_dir, "COAD_proteomics_gene_abundance_log2_reference_intensity_normalized_Tumor.txt"),
+  meta = file.path(file_dir, "COAD_meta.txt"),
+  meta_s = file.path(file_dir, "COAD_survival.txt")
+)
+
+# Read each file into R
+tryCatch({
+  rnaseq_tumor <- read.table(files$rnaseq_tumor, header = TRUE, sep = "\t")
+  proteomics_normal <- read.table(files$proteomics_normal, header = TRUE, sep = "\t")
+  proteomics_tumor <- read.table(files$proteomics_tumor, header = TRUE, sep = "\t")
+  meta <- read.table(files$meta, header = TRUE, sep = "\t")
+  meta_s <- read.table(files$meta_s, header = TRUE, sep = "\t")
+
+  message("Files successfully read into R.")
+}, error = function(e) {
+  message("Error reading files: ", e$message)
+})
+```
+
+```{r}
+meta = meta[-1, -(2:11)]
+```
+
+
+# Check the first few rows of the files downloaded 
+```{r}
+head(rnaseq_tumor)
+head(proteomics_normal)
+head(proteomics_tumor)
+head(meta)
+head(meta_s)
+```
+
+## Rename column names in omics datasets by removing X
+```{r}
+#RNA Sequencing 
+rnaseq_tumor = rnaseq_tumor %>% rename_with((~ gsub("^X", "", .)))
+
+## Proteomics normal
+proteomics_normal = proteomics_normal %>% rename_with((~ gsub("^X", "", .)))
+
+## Proteomics tumor
+proteomics_tumor = proteomics_tumor %>% rename_with((~ gsub("^X", "", .)))
+```
+
+
+```{r}
+row.names(rnaseq_tumor) = rnaseq_tumor$idx
+rnaseq_tumor$idx = NULL
+row.names(proteomics_tumor) = proteomics_tumor$idx
+proteomics_tumor$idx = NULL
+common_pat = intersect(names(rnaseq_tumor), names(proteomics_tumor))
+print(common_pat)
+```
+
+## Data Exploration 
+```{r}
+common_gene = intersect(row.names(rnaseq_tumor), row.names(proteomics_tumor))
+```
+
+## Do a correlation analysis  
+```{r}
+cor = cor.test(as.numeric(rnaseq_tumor[common_gene[1], common_pat]), as.numeric(proteomics_tumor[common_gene[1], common_pat]), method = "spearman",
+               use = "pairwise.complete.obs")
+cor
+```
+
+## DO a correlation analysis for all the common genes
+```{r}
+# Initialize a list to store correlation results
+cor <- list()
+
+# Loop through each gene in `common_gene`
+for (gene in common_gene) {
+  # Extract data for the current gene
+  rnaseq_data <- as.numeric(rnaseq_tumor[gene, common_pat])
+  proteomics_data <- as.numeric(proteomics_tumor[gene, common_pat])
+  
+  # Check if there are enough non-NA values (at least 2)
+  if (sum(!is.na(rnaseq_data) & !is.na(proteomics_data)) >= 2) {
+    # Perform correlation test with suppressed warning
+    cor_test <- suppressWarnings(
+      cor.test(
+        rnaseq_data,
+        proteomics_data,
+        method = "spearman",
+        use = "pairwise.complete.obs"
+      )
+    )
+    
+    # Store the results for this gene
+    cor_results[[gene]] <- list(
+      correlation = cor_test$estimate,
+      p_value = cor_test$p.value
+    )
+  } else {
+    # Store NA if there are not enough observations
+    cor_results[[gene]] <- list(
+      correlation = NA,
+      p_value = NA
+    )
+  }
+}
+
+# Optionally, convert results to a data frame for easier viewing
+cor_results_df <- do.call(rbind, lapply(names(cor_results), function(gene) {
+  data.frame(
+    Gene = gene,
+    Correlation = cor_results[[gene]]$correlation,
+    P_Value = cor_results[[gene]]$p_value
+  )
+}))
+
+# Display the correlation results
+print(cor_results_df)
+```
+
+## Do same correlation for normal proteomics and rnaseq tumor
+```{r}
+row.names(rnaseq_tumor) <- rnaseq_tumor$idx
+rnaseq_tumor$idx = NULL
+row.names(proteomics_normal) = proteomics_normal$idx
+proteomics_normal$idx = NULL
+common_pat_n = intersect(names(rnaseq_tumor), names(proteomics_normal))
+print(common_pat)
+common_gene_n = intersect(row.names(rnaseq_tumor), row.names(proteomics_normal))
+```
+
+## Correlation between rnaseq and proteomics normal
+```{r}
+# Initialize a list to store correlation results
+cor_n <- list()
+
+# Loop through each gene in `common_gene`
+for (gene in common_gene_n) {
+  # Extract data for the current gene
+  rnaseq_data <- as.numeric(rnaseq_tumor[gene, common_pat_n])
+  proteomics_data <- as.numeric(proteomics_normal[gene, common_pat_n])
+  
+  # Check if there are enough non-NA values (at least 2)
+  if (sum(!is.na(rnaseq_data) & !is.na(proteomics_data)) >= 2) {
+    # Perform correlation test with suppressed warning
+    cor_test <- suppressWarnings(
+      cor.test(
+        rnaseq_data,
+        proteomics_data,
+        method = "spearman",
+        use = "pairwise.complete.obs"
+      )
+    )
+    
+    # Store the results for this gene
+    cor_results[[gene]] <- list(
+      correlation = cor_test$estimate,
+      p_value = cor_test$p.value
+    )
+  } else {
+    # Store NA if there are not enough observations
+    cor_results[[gene]] <- list(
+      correlation = NA,
+      p_value = NA
+    )
+  }
+}
+
+# Optionally, convert results to a data frame for easier viewing
+cor_results_df <- do.call(rbind, lapply(names(cor_results), function(gene) {
+  data.frame(
+    Gene = gene,
+    Correlation = cor_results[[gene]]$correlation,
+    P_Value = cor_results[[gene]]$p_value
+  )
+}))
+
+# Display the correlation results
+print(cor_results_df)
+```
+
+
+
