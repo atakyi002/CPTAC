@@ -38,8 +38,12 @@ file_urls <- list(
   "COAD_RNAseq_gene_RSEM_coding_UQ_1500_log2_Tumor.txt" = "https://cptac-pancancer-data.s3.us-west-2.amazonaws.com/data_freeze_v1.2_reorganized/COAD/COAD_RNAseq_gene_RSEM_coding_UQ_1500_log2_Tumor.txt",
   "COAD_proteomics_gene_abundance_log2_reference_intensity_normalized_Normal.txt" = "https://cptac-pancancer-data.s3.us-west-2.amazonaws.com/data_freeze_v1.2_reorganized/COAD/COAD_proteomics_gene_abundance_log2_reference_intensity_normalized_Normal.txt",
   "COAD_proteomics_gene_abundance_log2_reference_intensity_normalized_Tumor.txt" = "https://cptac-pancancer-data.s3.us-west-2.amazonaws.com/data_freeze_v1.2_reorganized/COAD/COAD_proteomics_gene_abundance_log2_reference_intensity_normalized_Tumor.txt",
+<<<<<<< HEAD
   "COAD_meta.txt" = "https://cptac-pancancer-data.s3.us-west-2.amazonaws.com/data_freeze_v1.2_reorganized/COAD/COAD_meta.txt",
   "COAD_survival.txt" = "https://cptac-pancancer-data.s3.us-west-2.amazonaws.com/data_freeze_v1.2_reorganized/COAD/COAD_survival.txt"
+=======
+  "COAD_meta.txt" = "https://cptac-pancancer-data.s3.us-west-2.amazonaws.com/data_freeze_v1.2_reorganized/COAD/COAD_meta.txt"
+>>>>>>> 98af49ac103086c755696f47b144cd2500659751
 )
 
 # Download each file individually
@@ -62,20 +66,34 @@ file_dir <- "C:/Users/ataky/OneDrive - University of Utah/Desktop/Work"
 
 # Define file paths
 files <- list(
+<<<<<<< HEAD
   rnaseq_tumor = file.path(file_dir, "COAD_RNAseq_gene_RSEM_coding_UQ_1500_log2_Tumor.txt"),
   proteomics_normal = file.path(file_dir, "COAD_proteomics_gene_abundance_log2_reference_intensity_normalized_Normal.txt"),
   proteomics_tumor = file.path(file_dir, "COAD_proteomics_gene_abundance_log2_reference_intensity_normalized_Tumor.txt"),
   meta = file.path(file_dir, "COAD_meta.txt"),
   meta_s = file.path(file_dir, "COAD_survival.txt")
+=======
+  rnaseq = file.path(file_dir, "COAD_RNAseq_gene_RSEM_coding_UQ_1500_log2_Tumor.txt"),
+  proteomics_normal = file.path(file_dir, "COAD_proteomics_gene_abundance_log2_reference_intensity_normalized_Normal.txt"),
+  proteomics_tumor = file.path(file_dir, "COAD_proteomics_gene_abundance_log2_reference_intensity_normalized_Tumor.txt"),
+  meta = file.path(file_dir, "COAD_meta.txt")
+>>>>>>> 98af49ac103086c755696f47b144cd2500659751
 )
 
 # Read each file into R
 tryCatch({
+<<<<<<< HEAD
   rnaseq_tumor <- read.table(files$rnaseq_tumor, header = TRUE, sep = "\t")
   proteomics_normal <- read.table(files$proteomics_normal, header = TRUE, sep = "\t")
   proteomics_tumor <- read.table(files$proteomics_tumor, header = TRUE, sep = "\t")
   meta <- read.table(files$meta, header = TRUE, sep = "\t")
   meta_s <- read.table(files$meta_s, header = TRUE, sep = "\t")
+=======
+  rnaseq <- read.table(files$rnaseq, header = TRUE, sep = "\t")
+  proteomics_normal <- read.table(files$proteomics_normal, header = TRUE, sep = "\t")
+  proteomics_tumor <- read.table(files$proteomics_tumor, header = TRUE, sep = "\t")
+  meta <- read.table(files$meta, header = TRUE, sep = "\t")
+>>>>>>> 98af49ac103086c755696f47b144cd2500659751
 
   message("Files successfully read into R.")
 }, error = function(e) {
@@ -83,6 +101,7 @@ tryCatch({
 })
 ```
 
+<<<<<<< HEAD
 ```{r}
 meta = meta[-1, -(2:11)]
 ```
@@ -244,3 +263,29 @@ print(cor_results_df)
 
 
 
+=======
+# Check the first few rows of the files downloaded 
+```{r}
+head(rnaseq)
+head(proteomics_normal)
+head(proteomics_tumor)
+head(meta)
+```
+
+## Data preparation for analysis
+```{r}
+## Filter RNA data in clinical
+rnaseq_id <- rnaseq[, colnames(rnaseq) %in% meta$case_id]
+
+## Filter Proteomics normal data in clinical data
+proteomics_normal_id <- proteomics_normal[, colnames(proteomics_normal) %in% meta$case_id]
+
+## Filter Proteomics normal data in clinical data
+proteomics_tumor_id <- proteomics_tumor[, colnames(proteomics_tumor) %in% meta$case_id]
+```
+
+## Match gene names between RNA-seq and protein data 
+```{r}
+## Identify 
+```
+>>>>>>> 98af49ac103086c755696f47b144cd2500659751
